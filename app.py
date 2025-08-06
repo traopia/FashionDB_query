@@ -63,7 +63,7 @@ def load_data1():
 #     embeddings = np.load(emb_path, mmap_mode='r')
 #     return df, embeddings
 
-df, embeddings = load_data1()
+df, embeddings = load_data()
 
 st.title("FashionDB Explorer")
 
