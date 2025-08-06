@@ -10,27 +10,43 @@ if 'selected_image' not in st.session_state:
     st.session_state.selected_image = None
 
 # Load metadata and embeddings
-# @st.cache_data
-# def load_data():
-#     # Load the enhanced dataset with additional rows from all_pics
-#     df = pd.read_parquet("https://huggingface.co/datasets/traopia/vogue-runway/resolve/main/VogueRunway_full.parquet")
-#     embeddings = np.load("https://huggingface.co/datasets/traopia/vogue-runway/blob/main/VogueRunway_image_full.npy")
-#     return df, embeddings
+@st.cache_data
+def load_data():
+    # Load the enhanced dataset with additional rows from all_pics
+    df = pd.read_parquet("data/VogueRunway.parquet")
+    embeddings = np.load("data/VogueRunway_image.npy")
+    return df, embeddings
 
 import requests
 from io import BytesIO
-@st.cache_data
-def load_data():
+@st.cache_data(show_spinner="Loading FashionDB...")
+def load_data_hf():
     # Load the Parquet file directly from Hugging Face
-    df_url = "https://huggingface.co/datasets/traopia/vogue-runway/resolve/main/VogueRunway_full.parquet"
+    df_url = "https://huggingface.co/datasets/traopia/vogue_runway_small/resolve/main/VogueRunway.parquet"
     df = pd.read_parquet(df_url)
 
     # Load the .npy file using requests
-    npy_url = "https://huggingface.co/datasets/traopia/vogue-runway/resolve/main/VogueRunway_image_full.npy"
+    npy_url = "https://huggingface.co/datasets/traopia/vogue_runway_small/resolve/main/VogueRunway_image.npy"
     response = requests.get(npy_url)
     response.raise_for_status()  # Raise error if download fails
     embeddings = np.load(BytesIO(response.content))
 
+    return df, embeddings
+
+def load_data1():
+
+
+# Login using e.g. `huggingface-cli login` to access this dataset
+    df = pd.read_json("hf://datasets/traopia/fashion_show_data_all_embeddings.json/fashion_show_data_all_embeddings.json", lines=True)
+    df["fashion_clip_image"] = df["fashion_clip_image"].apply(lambda x: x[0] if isinstance(x, list) else x)
+    df["image_urls"] = df["image_urls"].apply(lambda x: x[0] if x is not None else None)
+    df = df.rename(columns={"fashion_house":"designer", "image_urls":"url", "URL":"collection"})
+    
+    df = df.dropna(subset="fashion_clip_image")
+    df = df.reset_index(drop=True)
+    df["key"] = df.index
+    embeddings = np.vstack(df["fashion_clip_image"].values)
+    
     return df, embeddings
 
 # from huggingface_hub import hf_hub_download
@@ -42,7 +58,7 @@ def load_data():
 #     embeddings = np.load(emb_path, mmap_mode='r')
 #     return df, embeddings
 
-df, embeddings = load_data()
+df, embeddings = load_data1()
 
 st.title("FashionDB Explorer")
 
