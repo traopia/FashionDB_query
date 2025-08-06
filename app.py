@@ -10,30 +10,37 @@ if 'selected_image' not in st.session_state:
     st.session_state.selected_image = None
 
 # Load metadata and embeddings
+# @st.cache_data
+# def load_data():
+#     # Load the enhanced dataset with additional rows from all_pics
+#     df = pd.read_parquet("https://huggingface.co/datasets/traopia/vogue-runway/resolve/main/VogueRunway_full.parquet")
+#     embeddings = np.load("https://huggingface.co/datasets/traopia/vogue-runway/blob/main/VogueRunway_image_full.npy")
+#     return df, embeddings
+
+import requests
+from io import BytesIO
 @st.cache_data
 def load_data():
-    # Load the enhanced dataset with additional rows from all_pics
-    df = pd.read_parquet("data/VogueRunway_full.parquet")
-    embeddings = np.load("data/VogueRunway_image_full.npy")
-    
-    # # Create collection URLs (in case they're not already in the data)
-    # if "collection" not in df.columns:
-    #     def create_collection_url(row):
-    #         base_url = "https://www.vogue.com/fashion-shows/"
-    #         season = row["season"].lower()
-    #         year = str(row["year"])
-    #         category = row["category"].lower() if row["category"] else None
-    #         designer = row["designer"].lower().replace(" ", "-")
-            
-    #         if pd.isna(category) or category is None:
-    #             # Skip category if it's None or null
-    #             return base_url + season + "-" + year + "/" + designer
-    #         else:
-    #             return base_url + season + "-" + year + "-" + category + "/" + designer
-        
-    #     df["collection"] = df.apply(create_collection_url, axis=1)
-    
+    # Load the Parquet file directly from Hugging Face
+    df_url = "https://huggingface.co/datasets/traopia/vogue-runway/resolve/main/VogueRunway_full.parquet"
+    df = pd.read_parquet(df_url)
+
+    # Load the .npy file using requests
+    npy_url = "https://huggingface.co/datasets/traopia/vogue-runway/resolve/main/VogueRunway_image_full.npy"
+    response = requests.get(npy_url)
+    response.raise_for_status()  # Raise error if download fails
+    embeddings = np.load(BytesIO(response.content))
+
     return df, embeddings
+
+# from huggingface_hub import hf_hub_download
+# @st.cache_data(show_spinner="Loading FashionDB...")
+# def load_data():
+#     meta_path = hf_hub_download(repo_id="traopia/vogue-runway", filename="VogueRunway_full.parquet")
+#     emb_path = hf_hub_download(repo_id="traopia/vogue-runway", filename="VogueRunway_image_full.npy")
+#     df = pd.read_parquet(meta_path)
+#     embeddings = np.load(emb_path, mmap_mode='r')
+#     return df, embeddings
 
 df, embeddings = load_data()
 
@@ -147,7 +154,7 @@ else:
     for i, (_, row) in enumerate(results.iterrows()):
         with cols[i % 5]:
             st.image(row['url'], caption=row['designer'], use_container_width=True)
-            if st.button(f"Show metadata {i}"):
+            if st.button(f"metadata {i}"):
                 # Create a nice metadata display with only specific columns
                 metadata_cols = ['designer', 'season', 'year', 'category']
                 available_cols = [col for col in metadata_cols if col in row.index]
@@ -163,7 +170,7 @@ else:
                         st.markdown(f"[View on Vogue]({row['collection']})")
                 else:
                     st.info("No metadata available for this item")
-            if st.button(f"Find similar {i}"):
+            if st.button(f"find similar {i}"):
                 st.session_state.show_similar_page = True
                 st.session_state.selected_image = row
                 st.rerun()
